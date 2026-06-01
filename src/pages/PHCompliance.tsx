@@ -33,6 +33,7 @@ import { useAuthStore } from '@/store/authStore';
 
 const AUTHORITY_OPTIONS: RegulatorySource['authority'][] = ['NPC', 'AMLC', 'BSP', 'SEC', 'OTHER'];
 const ROLE_OPTIONS: RoleKey[] = ['compliance_admin', 'compliance_manager', 'breach_manager', 'dsr_handler', 'auditor', 'approver', 'user'];
+const HASH_DISPLAY_LENGTH = 18;
 
 function toDateInput(value?: number) {
   return value ? new Date(value).toISOString().slice(0, 10) : '';
@@ -76,7 +77,17 @@ export default function PHCompliance() {
   const [transferForm, setTransferForm] = useState({ transferName: '', destinationCountry: '', mechanism: '', legalBasis: '', nextReviewDate: '' });
   const [evidenceForm, setEvidenceForm] = useState({ title: '', description: '', uri: '', checksum: '', capturedBy: '' });
   const [approvalForm, setApprovalForm] = useState({ module: 'obligation' as ApprovalWorkflow['module'], entityId: '', action: '', maker: '', checker: '' });
-  const [submissionForm, setSubmissionForm] = useState({ regulator: 'NPC' as RegulatorySource['authority'], title: '', dueDate: '', checklist: '' });
+  const [submissionForm, setSubmissionForm] = useState({
+    regulator: 'NPC' as RegulatorySource['authority'],
+    title: '',
+    dueDate: '',
+    checklist: '',
+    obligationIds: '',
+    incidentIds: '',
+    dsrCaseIds: '',
+    ropaIds: '',
+    evidenceIds: '',
+  });
 
   const overdueObligations = obligations.filter((item) => item.dueDate && item.dueDate < Date.now() && item.status !== 'completed');
 
@@ -199,12 +210,14 @@ export default function PHCompliance() {
       id: crypto.randomUUID(),
       workspaceId: 'ws-default',
       updateEventId: event.id,
-      obligationCode: impacted[0]?.code,
+      obligationCode: impacted.length === 1 ? impacted[0]?.code : undefined,
       changeType: 'amended',
       impactSummary: `${event.title} mapped to ${impacted.length} obligation(s)`,
       impactedObligationIds: impacted.map((item) => item.id),
       impactedControlIds: [],
-      owner: impacted[0]?.owner ?? 'Unassigned',
+      owner: new Set(impacted.map((item) => item.owner).filter(Boolean)).size === 1
+        ? (impacted[0]?.owner ?? 'Unassigned')
+        : 'Multiple owners',
       reviewStatus: 'queued',
     };
     await db.regulatoryChanges.add(change);
@@ -377,6 +390,7 @@ export default function PHCompliance() {
   }
 
   async function addSubmissionPack() {
+    const parseIds = (value: string) => value.split(',').map((item) => item.trim()).filter(Boolean);
     const pack: SubmissionPack = {
       id: crypto.randomUUID(),
       workspaceId: 'ws-default',
@@ -385,18 +399,28 @@ export default function PHCompliance() {
       status: 'draft',
       dueDate: fromDateInput(submissionForm.dueDate),
       checklist: submissionForm.checklist.split(',').map((item) => item.trim()).filter(Boolean),
-      includedObligationIds: obligations.slice(0, 3).map((item) => item.id),
-      includedIncidentIds: breachWorkflows.map((item) => item.incidentId).filter(Boolean) as string[],
-      includedDSRCaseIds: dsrCases.slice(0, 3).map((item) => item.id),
-      includedROPAIds: ropaRecords.slice(0, 3).map((item) => item.id),
-      evidenceIds: evidence.slice(0, 5).map((item) => item.id),
+      includedObligationIds: parseIds(submissionForm.obligationIds),
+      includedIncidentIds: parseIds(submissionForm.incidentIds),
+      includedDSRCaseIds: parseIds(submissionForm.dsrCaseIds),
+      includedROPAIds: parseIds(submissionForm.ropaIds),
+      evidenceIds: parseIds(submissionForm.evidenceIds),
       notes: '',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
     await db.submissionPacks.add(pack);
     await audit('submission_pack', pack.id, 'create', `Created ${pack.regulator} submission pack`);
-    setSubmissionForm({ regulator: 'NPC', title: '', dueDate: '', checklist: '' });
+    setSubmissionForm({
+      regulator: 'NPC',
+      title: '',
+      dueDate: '',
+      checklist: '',
+      obligationIds: '',
+      incidentIds: '',
+      dsrCaseIds: '',
+      ropaIds: '',
+      evidenceIds: '',
+    });
     toast.success('Submission pack created');
   }
 
@@ -666,7 +690,7 @@ export default function PHCompliance() {
                 {evidence.slice(0, 6).map((item) => (
                   <div key={item.id} className="rounded-md border p-2 text-sm">
                     <p className="font-medium">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.capturedBy} · {toDateInput(item.capturedAt)} · {item.checksum}</p>
+                    <p className="text-xs text-muted-foreground">{item.capturedBy} · {new Date(item.capturedAt).toLocaleString()} · {item.checksum}</p>
                   </div>
                 ))}
               </div>
@@ -741,6 +765,13 @@ export default function PHCompliance() {
                 <Input type="date" value={submissionForm.dueDate} onChange={(e) => setSubmissionForm((prev) => ({ ...prev, dueDate: e.target.value }))} />
               </div>
               <Textarea placeholder="Checklist (comma-separated)" value={submissionForm.checklist} onChange={(e) => setSubmissionForm((prev) => ({ ...prev, checklist: e.target.value }))} />
+              <div className="grid gap-3 md:grid-cols-2">
+                <Input placeholder="Obligation IDs (comma-separated)" value={submissionForm.obligationIds} onChange={(e) => setSubmissionForm((prev) => ({ ...prev, obligationIds: e.target.value }))} />
+                <Input placeholder="Incident IDs (comma-separated)" value={submissionForm.incidentIds} onChange={(e) => setSubmissionForm((prev) => ({ ...prev, incidentIds: e.target.value }))} />
+                <Input placeholder="DSR case IDs (comma-separated)" value={submissionForm.dsrCaseIds} onChange={(e) => setSubmissionForm((prev) => ({ ...prev, dsrCaseIds: e.target.value }))} />
+                <Input placeholder="ROPA IDs (comma-separated)" value={submissionForm.ropaIds} onChange={(e) => setSubmissionForm((prev) => ({ ...prev, ropaIds: e.target.value }))} />
+                <Input className="md:col-span-2" placeholder="Evidence IDs (comma-separated)" value={submissionForm.evidenceIds} onChange={(e) => setSubmissionForm((prev) => ({ ...prev, evidenceIds: e.target.value }))} />
+              </div>
               <Button onClick={addSubmissionPack} disabled={!submissionForm.title}>Create submission pack</Button>
               <div className="space-y-2">
                 {submissionPacks.slice(0, 8).map((pack) => (
@@ -765,7 +796,7 @@ export default function PHCompliance() {
                 <div key={item.id} className="rounded-md border p-2 text-xs">
                   <p className="font-medium">{item.entityType} · {item.action}</p>
                   <p className="text-muted-foreground">{item.actorName} · {new Date(item.happenedAt).toLocaleString()}</p>
-                  <p className="text-muted-foreground">hash {item.integrityHash.slice(0, 18)}… prev {item.prevHash.slice(0, 18)}…</p>
+                  <p className="text-muted-foreground">hash {item.integrityHash.slice(0, HASH_DISPLAY_LENGTH)}… prev {item.prevHash.slice(0, HASH_DISPLAY_LENGTH)}…</p>
                 </div>
               ))}
             </CardContent>

@@ -801,10 +801,10 @@ db.version(10).stores({
   auditEvents: 'id, workspaceId, entityType, entityId, happenedAt, actorId',
 }).upgrade(async (tx) => {
   await tx.table('users').toCollection().modify((u: User) => {
-    const legacyRole = u.role === 'admin' || u.role === 'user' ? u.role : 'compliance_admin';
-    u.role = legacyRole;
+    const role = (u.role in ROLE_PERMISSIONS ? u.role : 'compliance_admin') as RoleKey;
+    u.role = role;
     if (!Array.isArray(u.permissions) || u.permissions.length === 0) {
-      u.permissions = permissionsForRole(legacyRole);
+      u.permissions = permissionsForRole(role);
     }
   });
 });
