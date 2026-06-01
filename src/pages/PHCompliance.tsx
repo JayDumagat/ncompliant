@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   appendAuditEvent,
@@ -78,10 +78,7 @@ export default function PHCompliance() {
   const [approvalForm, setApprovalForm] = useState({ module: 'obligation' as ApprovalWorkflow['module'], entityId: '', action: '', maker: '', checker: '' });
   const [submissionForm, setSubmissionForm] = useState({ regulator: 'NPC' as RegulatorySource['authority'], title: '', dueDate: '', checklist: '' });
 
-  const overdueObligations = useMemo(
-    () => obligations.filter((item) => item.dueDate && item.dueDate < Date.now() && item.status !== 'completed'),
-    [obligations]
-  );
+  const overdueObligations = obligations.filter((item) => item.dueDate && item.dueDate < Date.now() && item.status !== 'completed');
 
   async function audit(entityType: string, entityId: string, action: string, details: string) {
     const actorId = currentUser?.id ?? 'system';
