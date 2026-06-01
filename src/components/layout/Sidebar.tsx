@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CheckSquare, ClipboardCheck, Settings, PanelLeftClose, ListChecks, LayoutTemplate, GraduationCap, AlertTriangle, BarChart3, FileBarChart, Bell, MoreHorizontal, Zap, Building2, Database, GitBranch, CalendarClock, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, FileText, CheckSquare, ClipboardCheck, Settings, PanelLeftClose, ListChecks, LayoutTemplate, GraduationCap, AlertTriangle, BarChart3, FileBarChart, Bell, MoreHorizontal, Zap, Building2, Database, GitBranch, CalendarClock, ChevronDown, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/uiStore';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useState } from 'react';
+import type { RoleKey } from '@/db/db';
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { icon: GitBranch, label: 'Data Map', to: '/data-mapping' },
   { icon: CalendarClock, label: 'Reminders', to: '/reminders' },
   { icon: Bell, label: 'Updates', to: '/updates' },
+  { icon: ShieldCheck, label: 'PH Compliance', to: '/ph-compliance' },
 ];
 
 function NavLink({ item, onClick }: { item: typeof NAV_ITEMS[0]; onClick?: () => void }) {
@@ -56,8 +58,24 @@ function NavLink({ item, onClick }: { item: typeof NAV_ITEMS[0]; onClick?: () =>
   );
 }
 
-function getRoleLabel(role?: 'admin' | 'user' | null) {
-  return role === 'admin' ? 'Compliance Officer' : 'Compliance User';
+function getRoleLabel(role?: RoleKey | null) {
+  switch (role) {
+    case 'admin':
+    case 'compliance_admin':
+      return 'Compliance Admin';
+    case 'compliance_manager':
+      return 'Compliance Manager';
+    case 'breach_manager':
+      return 'Breach Manager';
+    case 'dsr_handler':
+      return 'DSR Handler';
+    case 'auditor':
+      return 'Auditor';
+    case 'approver':
+      return 'Approver';
+    default:
+      return 'Compliance User';
+  }
 }
 
 /** Desktop sidebar */
@@ -157,6 +175,7 @@ const MORE_ITEMS = [
   { icon: GitBranch, label: 'Data Map', to: '/data-mapping' },
   { icon: CalendarClock, label: 'Reminders', to: '/reminders' },
   { icon: Bell, label: 'Updates', to: '/updates' },
+  { icon: ShieldCheck, label: 'PH Compliance', to: '/ph-compliance' },
   { icon: Settings, label: 'Settings', to: '/settings' },
 ];
 
