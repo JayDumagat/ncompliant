@@ -239,12 +239,258 @@ export interface DataAsset {
   lastReviewedAt?: number;
 }
 
+export type ComplianceWorkflowStatus = 'draft' | 'active' | 'overdue' | 'completed' | 'accepted_risk';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+export type DSRRequestType = 'access' | 'correction' | 'erasure_blocking' | 'objection' | 'portability';
+export type DSRCaseStatus = 'intake' | 'in_review' | 'awaiting_customer' | 'fulfilled' | 'rejected' | 'closed' | 'overdue';
+export type ChangeType = 'new' | 'amended' | 'repealed';
+export type ReviewStatus = 'queued' | 'in_review' | 'confirmed' | 'dismissed';
+export type RoleKey = 'admin' | 'user' | 'compliance_admin' | 'compliance_manager' | 'breach_manager' | 'dsr_handler' | 'auditor' | 'approver';
+export type PermissionKey =
+  | 'obligations.manage'
+  | 'obligations.review'
+  | 'updates.ingest'
+  | 'incidents.breach'
+  | 'dsr.manage'
+  | 'ropa.manage'
+  | 'transfers.manage'
+  | 'evidence.manage'
+  | 'approvals.approve'
+  | 'submissions.manage'
+  | 'audit.export';
+
+export interface RegulatorySource {
+  id: string;
+  workspaceId: string;
+  authority: 'NPC' | 'AMLC' | 'BSP' | 'SEC' | 'OTHER';
+  legalBasis: string;
+  title: string;
+  applicability: string;
+  trigger: string;
+  cadence: string;
+  requiredEvidence: string[];
+  sourceUrl?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ComplianceObligation {
+  id: string;
+  workspaceId: string;
+  sourceId?: string;
+  code: string;
+  authority: RegulatorySource['authority'];
+  title: string;
+  applicability: string;
+  trigger: string;
+  cadence: string;
+  owner: string;
+  status: ComplianceWorkflowStatus;
+  dueDate?: number;
+  escalationLevel: 'none' | 'manager' | 'executive' | 'board';
+  exceptionReason?: string;
+  requiredEvidence: string[];
+  linkedPolicyIds: string[];
+  linkedControlIds: string[];
+  linkedTaskIds: string[];
+  evidenceIds: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface RegulatoryFeed {
+  id: string;
+  workspaceId: string;
+  authority: RegulatorySource['authority'];
+  connectorType: 'rss' | 'manual' | 'api';
+  endpoint: string;
+  status: 'active' | 'disabled';
+  lastCheckedAt?: number;
+  createdAt: number;
+}
+
+export interface RegulatoryUpdateEvent {
+  id: string;
+  workspaceId: string;
+  feedId?: string;
+  authority: RegulatorySource['authority'];
+  title: string;
+  summary: string;
+  publishedAt: number;
+  ingestedAt: number;
+  referenceUrl?: string;
+}
+
+export interface RegulatoryChangeRecord {
+  id: string;
+  workspaceId: string;
+  updateEventId: string;
+  obligationCode?: string;
+  changeType: ChangeType;
+  impactSummary: string;
+  impactedObligationIds: string[];
+  impactedControlIds: string[];
+  owner: string;
+  reviewStatus: ReviewStatus;
+  reviewedAt?: number;
+}
+
+export interface DSRCase {
+  id: string;
+  workspaceId: string;
+  requestType: DSRRequestType;
+  requesterName: string;
+  requesterEmail: string;
+  status: DSRCaseStatus;
+  assignedTo: string;
+  receivedAt: number;
+  dueDate: number;
+  decision?: 'approved' | 'partially_approved' | 'rejected';
+  decisionReason?: string;
+  closedAt?: number;
+  closureReason?: string;
+  escalationLevel: 'none' | 'manager' | 'legal';
+  evidenceIds: string[];
+  decisionLog: string[];
+}
+
+export interface BreachWorkflow {
+  id: string;
+  workspaceId: string;
+  incidentId?: string;
+  title: string;
+  status: ComplianceWorkflowStatus;
+  owner: string;
+  detectedAt: number;
+  riskToRights: boolean;
+  affectedSubjectsCount: number;
+  npcNotificationRequired: boolean;
+  npcNotificationDeadline?: number;
+  npcNotificationSentAt?: number;
+  notificationReference?: string;
+  thresholdAssessment: string;
+  approver: string;
+  approvalStatus: ApprovalStatus;
+  timeline: string[];
+  evidenceIds: string[];
+  submissionPackId?: string;
+  createdAt: number;
+}
+
+export interface ROPARecord {
+  id: string;
+  workspaceId: string;
+  activityName: string;
+  owner: string;
+  status: ComplianceWorkflowStatus;
+  legalBasis: string;
+  dataSubjects: string;
+  dataCategories: string;
+  recipients: string;
+  transferBasis: string;
+  retentionPeriod: string;
+  disposalMethod: string;
+  linkedIncidentIds: string[];
+  linkedAssessmentIds: string[];
+  linkedVendorIds: string[];
+  linkedPolicyIds: string[];
+  evidenceIds: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TransferAssessment {
+  id: string;
+  workspaceId: string;
+  transferName: string;
+  destinationCountry: string;
+  mechanism: string;
+  legalBasis: string;
+  safeguardStatus: 'valid' | 'expiring' | 'missing';
+  status: ComplianceWorkflowStatus;
+  reviewDate?: number;
+  nextReviewDate?: number;
+  remediationTaskIds: string[];
+  evidenceIds: string[];
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface EvidenceRecord {
+  id: string;
+  workspaceId: string;
+  title: string;
+  type: 'document' | 'screenshot' | 'log' | 'approval' | 'submission' | 'other';
+  description: string;
+  uri: string;
+  checksum: string;
+  hashAlgorithm: 'sha256';
+  immutable: boolean;
+  chainOfCustody: string[];
+  capturedAt: number;
+  capturedBy: string;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
+}
+
+export interface ApprovalWorkflow {
+  id: string;
+  workspaceId: string;
+  module: 'breach' | 'obligation' | 'submission' | 'transfer' | 'dsr' | 'ropa' | 'other';
+  entityId: string;
+  action: string;
+  maker: string;
+  checker: string;
+  status: ApprovalStatus;
+  submittedAt: number;
+  decidedAt?: number;
+  decisionNote?: string;
+}
+
+export interface SubmissionPack {
+  id: string;
+  workspaceId: string;
+  regulator: RegulatorySource['authority'];
+  title: string;
+  status: 'draft' | 'ready' | 'submitted' | 'follow_up' | 'closed';
+  dueDate?: number;
+  submittedAt?: number;
+  referenceNumber?: string;
+  followUpDate?: number;
+  checklist: string[];
+  includedObligationIds: string[];
+  includedIncidentIds: string[];
+  includedDSRCaseIds: string[];
+  includedROPAIds: string[];
+  evidenceIds: string[];
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AuditEvent {
+  id: string;
+  workspaceId: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  actorId: string;
+  actorName: string;
+  details: string;
+  happenedAt: number;
+  prevHash: string;
+  integrityHash: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   passwordHash: string;
-  role: 'admin' | 'user';
+  role: RoleKey;
+  permissions: PermissionKey[];
   createdAt: number;
 }
 
@@ -334,6 +580,20 @@ export interface PIA {
 }
 
 export const WS_DEFAULT_ID = 'ws-default';
+export const ROLE_PERMISSIONS: Record<RoleKey, PermissionKey[]> = {
+  admin: ['obligations.manage', 'obligations.review', 'updates.ingest', 'incidents.breach', 'dsr.manage', 'ropa.manage', 'transfers.manage', 'evidence.manage', 'approvals.approve', 'submissions.manage', 'audit.export'],
+  user: ['obligations.review'],
+  compliance_admin: ['obligations.manage', 'obligations.review', 'updates.ingest', 'incidents.breach', 'dsr.manage', 'ropa.manage', 'transfers.manage', 'evidence.manage', 'approvals.approve', 'submissions.manage', 'audit.export'],
+  compliance_manager: ['obligations.manage', 'obligations.review', 'updates.ingest', 'dsr.manage', 'ropa.manage', 'transfers.manage', 'evidence.manage', 'submissions.manage'],
+  breach_manager: ['incidents.breach', 'evidence.manage', 'submissions.manage'],
+  dsr_handler: ['dsr.manage', 'evidence.manage'],
+  auditor: ['obligations.review', 'audit.export'],
+  approver: ['approvals.approve', 'submissions.manage'],
+};
+
+export function permissionsForRole(role: RoleKey): PermissionKey[] {
+  return ROLE_PERMISSIONS[role];
+}
 
 const db = new Dexie('NCompliantDB') as Dexie & {
   workspaces: EntityTable<Workspace, 'id'>;
@@ -353,6 +613,19 @@ const db = new Dexie('NCompliantDB') as Dexie & {
   users: EntityTable<User, 'id'>;
   dataMapNodes: EntityTable<DataMapNode, 'id'>;
   dataMapEdges: EntityTable<DataMapEdge, 'id'>;
+  regulatorySources: EntityTable<RegulatorySource, 'id'>;
+  obligations: EntityTable<ComplianceObligation, 'id'>;
+  regulatoryFeeds: EntityTable<RegulatoryFeed, 'id'>;
+  regulatoryEvents: EntityTable<RegulatoryUpdateEvent, 'id'>;
+  regulatoryChanges: EntityTable<RegulatoryChangeRecord, 'id'>;
+  dsrCases: EntityTable<DSRCase, 'id'>;
+  breachWorkflows: EntityTable<BreachWorkflow, 'id'>;
+  ropaRecords: EntityTable<ROPARecord, 'id'>;
+  transferAssessments: EntityTable<TransferAssessment, 'id'>;
+  evidenceRecords: EntityTable<EvidenceRecord, 'id'>;
+  approvalWorkflows: EntityTable<ApprovalWorkflow, 'id'>;
+  submissionPacks: EntityTable<SubmissionPack, 'id'>;
+  auditEvents: EntityTable<AuditEvent, 'id'>;
 };
 
 db.version(3).stores({
@@ -495,12 +768,85 @@ db.version(9).stores({
   });
 });
 
+db.version(10).stores({
+  workspaces: 'id, name',
+  policies: 'id, workspaceId, status, category, lastUpdated',
+  tasks: 'id, workspaceId, policyId, assessmentId, status, priority, dueDate',
+  updates: 'id, agency, severity, date',
+  pias: 'id, workspaceId, status, riskLevel, createdAt',
+  assessments: 'id, workspaceId, type, status, riskLevel, createdAt',
+  taskTemplates: 'id, workspaceId, category, createdAt',
+  checklists: 'id, workspaceId, type, status, createdAt',
+  trainingRecords: 'id, workspaceId, status, category, expirationDate, createdAt',
+  incidents: 'id, workspaceId, type, severity, status, reportedDate, createdAt',
+  vendors: 'id, workspaceId, status, riskTier, serviceCategory, createdAt, lastAssessmentAt',
+  vendorAssessments: 'id, workspaceId, vendorId, assessmentType, status, riskLevel, assessedAt, nextReviewDate, createdAt',
+  dataAssets: 'id, workspaceId, classification, group, status, createdAt, lastReviewedAt',
+  reports: 'id, workspaceId, type, template, period, status, generatedAt',
+  users: 'id, &email, role, createdAt',
+  dataMapNodes: 'id, workspaceId, type, parentId, createdAt',
+  dataMapEdges: 'id, workspaceId, sourceNodeId, targetNodeId, level, parentId, createdAt',
+  regulatorySources: 'id, workspaceId, authority, isActive, updatedAt',
+  obligations: 'id, workspaceId, authority, status, owner, dueDate, updatedAt',
+  regulatoryFeeds: 'id, workspaceId, authority, status, lastCheckedAt, createdAt',
+  regulatoryEvents: 'id, workspaceId, authority, publishedAt, ingestedAt',
+  regulatoryChanges: 'id, workspaceId, updateEventId, changeType, owner, reviewStatus',
+  dsrCases: 'id, workspaceId, requestType, status, assignedTo, dueDate, receivedAt',
+  breachWorkflows: 'id, workspaceId, incidentId, status, owner, npcNotificationDeadline, createdAt',
+  ropaRecords: 'id, workspaceId, status, owner, activityName, updatedAt',
+  transferAssessments: 'id, workspaceId, status, safeguardStatus, nextReviewDate, updatedAt',
+  evidenceRecords: 'id, workspaceId, type, capturedAt, capturedBy, relatedEntityType, relatedEntityId',
+  approvalWorkflows: 'id, workspaceId, module, entityId, status, submittedAt, decidedAt',
+  submissionPacks: 'id, workspaceId, regulator, status, dueDate, submittedAt, updatedAt',
+  auditEvents: 'id, workspaceId, entityType, entityId, happenedAt, actorId',
+}).upgrade(async (tx) => {
+  await tx.table('users').toCollection().modify((u: User) => {
+    const legacyRole = u.role === 'admin' || u.role === 'user' ? u.role : 'compliance_admin';
+    u.role = legacyRole;
+    if (!Array.isArray(u.permissions) || u.permissions.length === 0) {
+      u.permissions = permissionsForRole(legacyRole);
+    }
+  });
+});
+
+async function digestToHex(payload: string): Promise<string> {
+  const encoded = new TextEncoder().encode(payload);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function appendAuditEvent(input: Omit<AuditEvent, 'id' | 'happenedAt' | 'prevHash' | 'integrityHash'>) {
+  const history = await db.auditEvents
+    .where('workspaceId')
+    .equals(input.workspaceId)
+    .sortBy('happenedAt');
+  const last = history.at(-1);
+  const happenedAt = Date.now();
+  const prevHash = last?.integrityHash ?? 'GENESIS';
+  const integrityHash = await digestToHex([
+    prevHash,
+    input.workspaceId,
+    input.entityType,
+    input.entityId,
+    input.action,
+    input.actorId,
+    input.actorName,
+    input.details,
+    String(happenedAt),
+  ].join('|'));
+
+  await db.auditEvents.add({
+    id: crypto.randomUUID(),
+    ...input,
+    happenedAt,
+    prevHash,
+    integrityHash,
+  });
+}
+
 /** Hash a password string using SHA-256 (client-side demo only). */
 export async function hashPassword(password: string): Promise<string> {
-  const encoded = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
-  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return digestToHex(password);
 }
 
 export { db };
-

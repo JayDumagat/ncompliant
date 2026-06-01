@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { db, hashPassword } from '@/db/db';
+import { db, hashPassword, permissionsForRole, type PermissionKey, type RoleKey } from '@/db/db';
 
 interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: RoleKey;
+  permissions: PermissionKey[];
 }
 
 interface AuthState {
@@ -37,7 +38,13 @@ export const useAuthStore = create<AuthState>()(
             return { success: false, error: 'Incorrect password.' };
           }
           set({
-            user: { id: user.id, name: user.name, email: user.email, role: user.role },
+            user: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              permissions: Array.isArray(user.permissions) ? user.permissions : permissionsForRole(user.role),
+            },
             isAuthenticated: true,
             needsOnboarding: false,
           });
@@ -61,12 +68,13 @@ export const useAuthStore = create<AuthState>()(
             name: name.trim(),
             email: normalizedEmail,
             passwordHash,
-            role: 'admin' as const,
+            role: 'compliance_admin' as const,
+            permissions: permissionsForRole('compliance_admin'),
             createdAt: Date.now(),
           };
           await db.users.add(newUser);
           set({
-            user: { id, name: newUser.name, email: newUser.email, role: newUser.role },
+            user: { id, name: newUser.name, email: newUser.email, role: newUser.role, permissions: newUser.permissions },
             isAuthenticated: true,
             needsOnboarding: true,
           });
