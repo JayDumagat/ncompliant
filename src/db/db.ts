@@ -850,3 +850,37 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export { db };
+
+// Version 11: add 'code' index on obligations for seed deduplication
+db.version(11).stores({
+  workspaces: 'id, name',
+  policies: 'id, workspaceId, status, category, lastUpdated',
+  tasks: 'id, workspaceId, policyId, assessmentId, status, priority, dueDate',
+  updates: 'id, agency, severity, date',
+  pias: 'id, workspaceId, status, riskLevel, createdAt',
+  assessments: 'id, workspaceId, type, status, riskLevel, createdAt',
+  taskTemplates: 'id, workspaceId, category, createdAt',
+  checklists: 'id, workspaceId, type, status, createdAt',
+  trainingRecords: 'id, workspaceId, status, category, expirationDate, createdAt',
+  incidents: 'id, workspaceId, type, severity, status, reportedDate, createdAt',
+  vendors: 'id, workspaceId, status, riskTier, serviceCategory, createdAt, lastAssessmentAt',
+  vendorAssessments: 'id, workspaceId, vendorId, assessmentType, status, riskLevel, assessedAt, nextReviewDate, createdAt',
+  dataAssets: 'id, workspaceId, classification, group, status, createdAt, lastReviewedAt',
+  reports: 'id, workspaceId, type, template, period, status, generatedAt',
+  users: 'id, &email, role, createdAt',
+  dataMapNodes: 'id, workspaceId, type, parentId, createdAt',
+  dataMapEdges: 'id, workspaceId, sourceNodeId, targetNodeId, level, parentId, createdAt',
+  regulatorySources: 'id, workspaceId, authority, isActive, updatedAt',
+  obligations: 'id, workspaceId, code, authority, status, owner, dueDate, updatedAt',
+  regulatoryFeeds: 'id, workspaceId, authority, status, lastCheckedAt, createdAt',
+  regulatoryEvents: 'id, workspaceId, authority, publishedAt, ingestedAt',
+  regulatoryChanges: 'id, workspaceId, updateEventId, changeType, owner, reviewStatus',
+  dsrCases: 'id, workspaceId, requestType, status, assignedTo, dueDate, receivedAt',
+  breachWorkflows: 'id, workspaceId, incidentId, status, owner, npcNotificationDeadline, createdAt',
+  ropaRecords: 'id, workspaceId, status, owner, activityName, updatedAt',
+  transferAssessments: 'id, workspaceId, status, safeguardStatus, nextReviewDate, updatedAt',
+  evidenceRecords: 'id, workspaceId, type, capturedAt, capturedBy, relatedEntityType, relatedEntityId',
+  approvalWorkflows: 'id, workspaceId, module, entityId, status, submittedAt, decidedAt',
+  submissionPacks: 'id, workspaceId, regulator, status, dueDate, submittedAt, updatedAt',
+  auditEvents: 'id, workspaceId, entityType, entityId, happenedAt, actorId',
+});

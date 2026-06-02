@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type Workspace } from '@/db/db';
+import { appendAuditEvent, db, permissionsForRole, type ApprovalWorkflow, type PermissionKey, type RoleKey, type Workspace } from '@/db/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -9,10 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useUIStore } from '@/store/uiStore';
-import { Plus, Download, Upload, Trash2, Check, Shield } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { Plus, Download, Upload, Trash2, Check, Shield, Users } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 import { useState, useRef } from 'react';
+
+const ROLE_OPTIONS: RoleKey[] = ['compliance_admin', 'compliance_manager', 'breach_manager', 'dsr_handler', 'auditor', 'approver', 'user'];
+const ROLE_LABEL: Record<RoleKey, string> = {
+  admin: 'Admin', user: 'User', compliance_admin: 'Compliance Admin',
+  compliance_manager: 'Compliance Manager', breach_manager: 'Breach Manager',
+  dsr_handler: 'DSR Handler', auditor: 'Auditor', approver: 'Approver',
+};
 
 function NewWorkspaceDialog() {
   const [open, setOpen] = useState(false);
@@ -154,6 +162,12 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      {/* Users & Roles */}
+      <UsersRolesSection />
+
+      {/* Maker-Checker Approvals */}
+      <MakerCheckerSection />
+
       {/* Data */}
       <Card>
         <CardHeader><CardTitle className="text-base">Data Management</CardTitle></CardHeader>
@@ -198,5 +212,111 @@ export default function Settings() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/* ── Users & Roles Section ── */
+function UsersRolesSection() {
+  const currentUser = useAuthStore((s) => s.user);
+  const users = useLiveQuery(() => db.users.orderBy('createdAt').reverse().toArray(), []) ?? [];
+
+  async function updateUserRole(userId: string, role: RoleKey) {
+    const permissions: PermissionKey[] = permissionsForRole(role);
+    await db.users.update(userId, { role, permissions });
+    await appendAuditEvent({ workspaceId: 'ws-default', entityType: 'user_role', entityId: userId, action: 'update', actorId: currentUser?.id ?? 'system', actorName: currentUser?.name ?? 'System', details: `Updated user role to ${role}` });
+    toast.success('Role updated');
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Users & Roles</CardTitle>
+        <Badge variant="secondary" className="gap-1"><Users className="h-3 w-3" />{users.length}</Badge>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {users.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No users registered yet.</p>
+        ) : (
+          users.map((user) => (
+            <div key={user.id} className="grid items-center gap-3 rounded-lg border p-3 text-sm md:grid-cols-[1fr_200px]">
+              <div>
+                <p className="font-medium">{user.name}</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {(user.permissions ?? []).map((p) => (
+                    <Badge key={p} variant="outline" className="text-[9px] font-mono">{p}</Badge>
+                  ))}
+                </div>
+              </div>
+              <Select value={user.role} onValueChange={(v) => void updateUserRole(user.id, v as RoleKey)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{ROLE_OPTIONS.map((r) => <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Maker-Checker Approvals Section ── */
+function MakerCheckerSection() {
+  const currentUser = useAuthStore((s) => s.user);
+  const approvals = useLiveQuery(() => db.approvalWorkflows.orderBy('submittedAt').reverse().toArray(), []) ?? [];
+  const [f, setF] = useState({ module: 'obligation' as ApprovalWorkflow['module'], entityId: '', action: '', maker: '', checker: '' });
+
+  const addApproval = async () => {
+    const id = crypto.randomUUID();
+    await db.approvalWorkflows.add({
+      id, workspaceId: 'ws-default', module: f.module,
+      entityId: f.entityId, action: f.action, maker: f.maker,
+      checker: f.checker, status: 'pending', submittedAt: Date.now(),
+    });
+    await appendAuditEvent({ workspaceId: 'ws-default', entityType: 'approval_workflow', entityId: id, action: 'create', actorId: currentUser?.id ?? 'system', actorName: currentUser?.name ?? 'System', details: `Created maker-checker request for ${f.module}` });
+    setF({ module: 'obligation', entityId: '', action: '', maker: '', checker: '' });
+    toast.success('Approval workflow created');
+  };
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Maker-Checker Approvals</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Input placeholder="Entity ID" value={f.entityId} onChange={(e) => setF({ ...f, entityId: e.target.value })} />
+          <Input placeholder="Action description" value={f.action} onChange={(e) => setF({ ...f, action: e.target.value })} />
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <Select value={f.module} onValueChange={(v) => setF({ ...f, module: v as ApprovalWorkflow['module'] })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="obligation">Obligation</SelectItem>
+              <SelectItem value="breach">Breach</SelectItem>
+              <SelectItem value="submission">Submission</SelectItem>
+              <SelectItem value="transfer">Transfer</SelectItem>
+              <SelectItem value="dsr">DSR</SelectItem>
+              <SelectItem value="ropa">ROPA</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input placeholder="Maker" value={f.maker} onChange={(e) => setF({ ...f, maker: e.target.value })} />
+          <Input placeholder="Checker" value={f.checker} onChange={(e) => setF({ ...f, checker: e.target.value })} />
+        </div>
+        <Button onClick={addApproval} disabled={!f.entityId || !f.checker}>Create Approval Request</Button>
+        <Separator />
+        <div className="space-y-2">
+          {approvals.slice(0, 8).map((a) => (
+            <div key={a.id} className="flex items-center justify-between rounded-md border p-2.5 text-sm">
+              <div>
+                <p className="font-medium">{a.module} · {a.action || 'Approval'}</p>
+                <p className="text-xs text-muted-foreground">Maker: {a.maker || 'n/a'} · Checker: {a.checker || 'n/a'}</p>
+              </div>
+              <Badge variant={a.status === 'pending' ? 'outline' : a.status === 'approved' ? 'default' : 'destructive'}>{a.status}</Badge>
+            </div>
+          ))}
+          {approvals.length === 0 && <p className="text-sm text-muted-foreground py-2">No approval workflows yet.</p>}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

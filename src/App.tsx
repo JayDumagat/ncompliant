@@ -25,7 +25,14 @@ import DataManagement from '@/pages/DataManagement';
 import DataMapping from '@/pages/DataMapping';
 import Profile from '@/pages/Profile';
 import Reminders from '@/pages/Reminders';
-import PHCompliance from '@/pages/PHCompliance';
+import ObligationsRegister from '@/pages/ObligationsRegister';
+import BreachWorkflows from '@/pages/BreachWorkflows';
+import DSRCases from '@/pages/DSRCases';
+import ROPA from '@/pages/ROPA';
+import CrossBorderTransfers from '@/pages/CrossBorderTransfers';
+import EvidenceVault from '@/pages/EvidenceVault';
+import AuditTrail from '@/pages/AuditTrail';
+import Submissions from '@/pages/Submissions';
 
 function RootRedirect() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -48,25 +55,40 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            {/* Governance */}
             <Route path="/policies" element={<Policies />} />
             <Route path="/policies/:id" element={<PolicyDetail />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/updates" element={<Updates />} />
             <Route path="/assessments" element={<Assessments />} />
             <Route path="/assessments/:id" element={<AssessmentDetail />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/templates" element={<TaskTemplates />} />
+            <Route path="/obligations" element={<ObligationsRegister />} />
+            <Route path="/tasks" element={<Tasks />} />
             <Route path="/checklists" element={<Checklists />} />
-            <Route path="/training" element={<Training />} />
+            <Route path="/templates" element={<TaskTemplates />} />
+            {/* Operations */}
             <Route path="/incidents" element={<Incidents />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/breach-workflows" element={<BreachWorkflows />} />
+            <Route path="/dsr-cases" element={<DSRCases />} />
+            {/* Data Privacy */}
             <Route path="/data-management" element={<DataManagement />} />
             <Route path="/data-mapping" element={<DataMapping />} />
+            <Route path="/ropa" element={<ROPA />} />
+            <Route path="/transfers" element={<CrossBorderTransfers />} />
+            {/* Regulatory */}
+            <Route path="/updates" element={<Updates />} />
+            <Route path="/submissions" element={<Submissions />} />
+            {/* Reporting */}
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/evidence" element={<EvidenceVault />} />
+            <Route path="/audit-trail" element={<AuditTrail />} />
+            {/* Admin */}
+            <Route path="/training" element={<Training />} />
+            <Route path="/vendors" element={<Vendors />} />
             <Route path="/reminders" element={<Reminders />} />
-            <Route path="/ph-compliance" element={<PHCompliance />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<Profile />} />
+            {/* Backward compat: redirect old monolith route */}
+            <Route path="/ph-compliance" element={<Navigate to="/obligations" replace />} />
           </Route>
         </Route>
       </Routes>

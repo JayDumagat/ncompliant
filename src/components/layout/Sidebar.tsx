@@ -1,5 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CheckSquare, ClipboardCheck, Settings, PanelLeftClose, ListChecks, LayoutTemplate, GraduationCap, AlertTriangle, BarChart3, FileBarChart, Bell, MoreHorizontal, Zap, Building2, Database, GitBranch, CalendarClock, ChevronDown, ShieldCheck } from 'lucide-react';
+import {
+  LayoutDashboard, FileText, CheckSquare, ClipboardCheck, Settings,
+  PanelLeftClose, ListChecks, LayoutTemplate, GraduationCap, AlertTriangle,
+  BarChart3, FileBarChart, Bell, MoreHorizontal, Zap, Building2, Database,
+  GitBranch, CalendarClock, ChevronDown, ShieldCheck, Scale, ShieldAlert,
+  UserCheck, BookOpen, Globe, Archive, ScrollText, Send,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/uiStore';
 import { Button } from '@/components/ui/button';
@@ -19,28 +25,93 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useState } from 'react';
 import type { RoleKey } from '@/db/db';
 
-const NAV_ITEMS = [
+/* ── Types ── */
+interface NavItem {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  to: string;
+}
+
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+/* ── Navigation Structure ── */
+const PINNED: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
-  { icon: FileText, label: 'Policies', to: '/policies' },
-  { icon: ClipboardCheck, label: 'Assessments', to: '/assessments' },
-  { icon: CheckSquare, label: 'Tasks', to: '/tasks' },
-  { icon: ListChecks, label: 'Checklists', to: '/checklists' },
-  { icon: LayoutTemplate, label: 'Templates', to: '/templates' },
-  { icon: AlertTriangle, label: 'Incidents', to: '/incidents' },
-  { icon: BarChart3, label: 'Analytics', to: '/analytics' },
-  { icon: FileBarChart, label: 'Reports', to: '/reports' },
-  { icon: GraduationCap, label: 'Training', to: '/training' },
-  { icon: Building2, label: 'Vendors', to: '/vendors' },
-  { icon: Database, label: 'Data', to: '/data-management' },
-  { icon: GitBranch, label: 'Data Map', to: '/data-mapping' },
-  { icon: CalendarClock, label: 'Reminders', to: '/reminders' },
-  { icon: Bell, label: 'Updates', to: '/updates' },
-  { icon: ShieldCheck, label: 'PH Compliance', to: '/ph-compliance' },
 ];
 
-function NavLink({ item, onClick }: { item: typeof NAV_ITEMS[0]; onClick?: () => void }) {
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'Governance',
+    items: [
+      { icon: FileText, label: 'Policies', to: '/policies' },
+      { icon: ClipboardCheck, label: 'Assessments', to: '/assessments' },
+      { icon: Scale, label: 'Obligations', to: '/obligations' },
+      { icon: CheckSquare, label: 'Tasks', to: '/tasks' },
+      { icon: ListChecks, label: 'Checklists', to: '/checklists' },
+      { icon: LayoutTemplate, label: 'Templates', to: '/templates' },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { icon: AlertTriangle, label: 'Incidents', to: '/incidents' },
+      { icon: ShieldAlert, label: 'Breach Workflows', to: '/breach-workflows' },
+      { icon: UserCheck, label: 'DSR Cases', to: '/dsr-cases' },
+    ],
+  },
+  {
+    title: 'Data Privacy',
+    items: [
+      { icon: Database, label: 'Data Inventory', to: '/data-management' },
+      { icon: GitBranch, label: 'Data Map', to: '/data-mapping' },
+      { icon: BookOpen, label: 'ROPA', to: '/ropa' },
+      { icon: Globe, label: 'Transfers', to: '/transfers' },
+    ],
+  },
+  {
+    title: 'Regulatory',
+    items: [
+      { icon: Bell, label: 'Reg. Updates', to: '/updates' },
+      { icon: Send, label: 'Submissions', to: '/submissions' },
+    ],
+  },
+  {
+    title: 'Reporting',
+    items: [
+      { icon: BarChart3, label: 'Analytics', to: '/analytics' },
+      { icon: FileBarChart, label: 'Reports', to: '/reports' },
+      { icon: Archive, label: 'Evidence Vault', to: '/evidence' },
+      { icon: ScrollText, label: 'Audit Trail', to: '/audit-trail' },
+    ],
+  },
+  {
+    title: 'Admin',
+    items: [
+      { icon: GraduationCap, label: 'Training', to: '/training' },
+      { icon: Building2, label: 'Vendors', to: '/vendors' },
+      { icon: CalendarClock, label: 'Reminders', to: '/reminders' },
+      { icon: Settings, label: 'Settings', to: '/settings' },
+    ],
+  },
+];
+
+/* ── Flat list for mobile ── */
+const ALL_NAV_ITEMS: NavItem[] = [
+  ...PINNED,
+  ...NAV_GROUPS.flatMap((g) => g.items),
+];
+
+/* ── Helpers ── */
+function isActive(to: string, pathname: string) {
+  return to === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(to);
+}
+
+function NavLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
   const loc = useLocation();
-  const active = item.to === '/dashboard' ? loc.pathname === '/dashboard' : loc.pathname.startsWith(item.to);
+  const active = isActive(item.to, loc.pathname);
   return (
     <Link
       to={item.to}
@@ -55,6 +126,42 @@ function NavLink({ item, onClick }: { item: typeof NAV_ITEMS[0]; onClick?: () =>
       <item.icon className="h-4 w-4" />
       {item.label}
     </Link>
+  );
+}
+
+function NavSection({ group }: { group: NavGroup }) {
+  const loc = useLocation();
+  const hasActiveChild = group.items.some((item) => isActive(item.to, loc.pathname));
+  const [open, setOpen] = useState(hasActiveChild);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 hover:text-muted-foreground transition-colors"
+      >
+        {group.title}
+        <ChevronDown
+          className={cn(
+            'h-3 w-3 transition-transform duration-200',
+            open ? 'rotate-0' : '-rotate-90'
+          )}
+        />
+      </button>
+      <div
+        className={cn(
+          'overflow-hidden transition-all duration-200',
+          open ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+        )}
+      >
+        <div className="space-y-0.5 pb-1">
+          {group.items.map((item) => (
+            <NavLink key={item.to} item={item} />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -99,9 +206,14 @@ export function Sidebar() {
         </Button>
       </div>
       <ScrollArea className="flex-1 px-2 py-2">
-        <nav className="space-y-0.5">
-          {NAV_ITEMS.map(item => (
+        <nav className="space-y-1">
+          {/* Pinned items */}
+          {PINNED.map((item) => (
             <NavLink key={item.to} item={item} />
+          ))}
+          {/* Grouped sections */}
+          {NAV_GROUPS.map((group) => (
+            <NavSection key={group.title} group={group} />
           ))}
         </nav>
       </ScrollArea>
@@ -163,21 +275,9 @@ const BOTTOM_TABS = [
   { icon: MoreHorizontal, label: 'More', to: '__more__' },
 ];
 
-const MORE_ITEMS = [
-  { icon: ListChecks, label: 'Checklists', to: '/checklists' },
-  { icon: LayoutTemplate, label: 'Templates', to: '/templates' },
-  { icon: AlertTriangle, label: 'Incidents', to: '/incidents' },
-  { icon: BarChart3, label: 'Analytics', to: '/analytics' },
-  { icon: FileBarChart, label: 'Reports', to: '/reports' },
-  { icon: GraduationCap, label: 'Training', to: '/training' },
-  { icon: Building2, label: 'Vendors', to: '/vendors' },
-  { icon: Database, label: 'Data', to: '/data-management' },
-  { icon: GitBranch, label: 'Data Map', to: '/data-mapping' },
-  { icon: CalendarClock, label: 'Reminders', to: '/reminders' },
-  { icon: Bell, label: 'Updates', to: '/updates' },
-  { icon: ShieldCheck, label: 'PH Compliance', to: '/ph-compliance' },
-  { icon: Settings, label: 'Settings', to: '/settings' },
-];
+const MORE_ITEMS: NavItem[] = ALL_NAV_ITEMS.filter(
+  (item) => !BOTTOM_TABS.some((tab) => tab.to === item.to)
+);
 
 export function BottomTabBar() {
   const loc = useLocation();
@@ -223,28 +323,37 @@ export function BottomTabBar() {
         </div>
       </nav>
 
-      {/* More sheet — vertical list */}
+      {/* More sheet — grouped list */}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" className="rounded-t-xl pb-safe" aria-label="More navigation">
           <div className="mx-auto w-8 h-0.5 rounded-full bg-muted mb-4" />
-          <nav className="pb-2">
-            {MORE_ITEMS.map(item => {
-              const active = loc.pathname.startsWith(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMoreOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-2 py-2.5 rounded-md transition-colors text-sm',
-                    active ? 'text-foreground font-medium' : 'text-muted-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
+          <nav className="pb-2 space-y-3">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title}>
+                <p className="px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70 mb-1">
+                  {group.title}
+                </p>
+                {group.items
+                  .filter((item) => !BOTTOM_TABS.some((tab) => tab.to === item.to))
+                  .map((item) => {
+                    const active = loc.pathname.startsWith(item.to);
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMoreOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 px-2 py-2.5 rounded-md transition-colors text-sm',
+                          active ? 'text-foreground font-medium' : 'text-muted-foreground'
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+              </div>
+            ))}
           </nav>
         </SheetContent>
       </Sheet>
